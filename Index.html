@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>স্মার্ট হাজিরা খাতা</title>
+    
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f8; padding: 10px; margin: 0; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+
+        /* ইনপুট সেকশন */
+        .input-box { background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #90caf9; }
+        label { font-weight: bold; font-size: 14px; color: #333; }
+        select, input { width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        .time-row { display: flex; gap: 5px; margin-bottom: 5px; }
+        
+        button { width: 100%; padding: 12px; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; margin-top: 10px; }
+        .btn-save { background-color: #28a745; }
+        .btn-filter { background-color: #007bff; width: auto; padding: 10px 20px; }
+        .btn-pdf { background-color: #dc3545; margin-right: 5px; }
+        .btn-wa { background-color: #25D366; }
+
+        /* রিপোর্ট সেকশন */
+        #printableArea { padding: 15px; border: 1px solid #333; margin-top: 20px; background: #fff; display: none; }
+        .report-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .summary-card { background: #fff3cd; padding: 10px; border: 1px solid #ffeeba; margin-bottom: 10px; font-weight: bold; text-align: center; color: black;}
+        
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        th, td { border: 1px solid #000; padding: 8px; text-align: center; color: black; }
+        th { background-color: #f0f0f0; }
+        
+        .action-area { margin-top: 20px; display: flex; gap: 10px; }
+        .action-area button { flex: 1; }
+
+        /* ডেঞ্জার জোন (লুকানো ডিলিট বাটন) */
+        details { margin-top: 40px; border-top: 1px solid #ccc; padding-top: 10px; }
+        summary { color: gray; font-size: 12px; cursor: pointer; list-style: none; text-align: center; }
+        .btn-delete { background-color: #6c757d; font-size: 12px; margin-top: 5px; }
+
+        /* প্রিন্ট করার সময় শুধু স্লিপ দেখা যাবে */
+        @media print {
+            body * { visibility: hidden; }
+            #printableArea, #printableArea * { visibility: visible; }
+            #printableArea { position: absolute; left: 0; top: 0; width: 100%; border: none; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 class="no-print">মন্তাজদার কারখানা</h2>
+
+    <div class="input-box no-print">
+        <h3 style="margin-top:0; text-align:center;">হাজিরা খাতা</h3>
+        <label>তারিখ:</label>
+        <input type="date" id="dateInput">
+        <select id="workerInput">
+            <option value="সাহাবাজ">সাহাবাজ</option>
+            <option value="আরিফ">আরিফ</option>
+            <option value="রাহুল">রাহুল</option>
+            <option value="মধু">মধু</option>
+            <option value="বিমল">বিমল</option>
+            <option value="আকাশ">আকাশ</option>
+        </select>
+        <input type="number" id="wageInput" value="500" placeholder="১১ ঘণ্টার বেতন">
+        
+        <label>সময় (ইন - আউট):</label>
+        <div id="timeInputs">
+            <div class="time-row"><input type="time" class="in"><input type="time" class="out"></div>
+            <div class="time-row"><input type="time" class="in"><input type="time" class="out"></div>
+            <div class="time-row"><input type="time" class="in"><input type="time" class="out"></div>
+            <div class="time-row"><input type="time" class="in"><input type="time" class="out"></div>
+            <div class="time-row"><input type="time" class="in"><input type="time" class="out"></div>
+        </div>
+        <button class="btn-save" onclick="saveData()">💾 ডাটা সেভ করুন</button>
+    </div>
+
+    <div style="background:#343a40; padding:15px; border-radius:8px; color:white;" class="no-print">
+        <label style="color:white;">রিপোর্ট তৈরি করুন:</label>
+        <select id="searchName" style="margin-bottom:10px;">
+            <option value="সাহাবাজ">সাহাবাজ</option>
+            <option value="আরিফ">আরিফ</option>
+            <option value="রাহুল">রাহুল</option>
+            <option value="মধু">মধু</option>
+            <option value="বিমল">বিমল</option>
+            <option value="আকাশ">আকাশ</option>
+        </select>
+        <label style="color:white;">কোন মাসের?:</label>
+        <input type="month" id="searchMonth" style="margin-bottom:10px;">
+        <button class="btn-filter" onclick="loadData()">🔍 রিপোর্ট দেখুন</button>
+    </div>
+
+    <div id="printableArea">
+        <div class="report-header">
+            <h2 style="margin:0; text-transform:uppercase;">বেতন স্লিপ (Salary Slip)</h2>
+            <p>শ্রমিক: <span id="rName"></span> | মাস: <span id="rMonth"></span></p>
+        </div>
+
+        <div class="summary-card">
+            মোট কাজ: <span id="totalDays">0</span> দিন | মোট পাওনা: <span id="totalPay">0</span> টাকা
+        </div>
+
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>তারিখ ও বার</th>
+                    <th>ঘণ্টা</th>
+                    <th>টাকা</th>
+                    <th>বিস্তারিত (শিফট)</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+        
+        <div style="margin-top: 40px; display: flex; justify-content: space-between; font-size: 12px; font-weight: bold;">
+            <div style="border-top: 1px solid black; padding-top: 5px;">শ্রমিকের স্বাক্ষর</div>
+            <div style="border-top: 1px solid black; padding-top: 5px;">মালিকের স্বাক্ষর</div>
+        </div>
+        <p style="text-align:center; margin-top:20px; font-size:10px; color:gray;">হিসাবটি ডিজিটাল সফটওয়্যারের মাধ্যমে প্রস্তুত।</p>
+    </div>
+
+    <div class="action-area no-print" id="actionButtons" style="display:none;">
+        <button class="btn-pdf" onclick="window.print()">🖨️ PDF সেভ / প্রিন্ট</button>
+        <button class="btn-wa" onclick="shareWA()">📲 WhatsApp</button>
+    </div>
+
+    <details class="no-print">
+        <summary>⚠️ ডেঞ্জার জোন (ক্লিক করুন)</summary>
+        <p style="text-align:center; color:red; font-size:12px; margin:5px;">সতর্কতা: নিচের বাটনে চাপ দিলে এই মাসের সব ডাটা ডিলিট হয়ে যাবে!</p>
+        <button class="btn-delete" onclick="deleteMonthData()">🗑️ এই মাসের ডাটা ডিলিট করুন</button>
+    </details>
+</div>
+
+<script>
+    document.getElementById('dateInput').valueAsDate = new Date();
+    document.getElementById('searchMonth').value = new Date().toISOString().slice(0, 7);
+
+    // ১. ডাটা সেভ করা
+    function saveData() {
+        let date = document.getElementById('dateInput').value;
+        let name = document.getElementById('workerInput').value;
+        let wage = document.getElementById('wageInput').value;
+        let ins = document.querySelectorAll('.in');
+        let outs = document.querySelectorAll('.out');
+        
+        let totalMinutes = 0;
+        let shifts = "";
+
+        for(let i=0; i<ins.length; i++) {
+            if(ins[i].value && outs[i].value) {
+                let d1 = new Date("2000-01-01T" + ins[i].value);
+                let d2 = new Date("2000-01-01T" + outs[i].value);
+                if(d2 < d1) d2.setDate(d2.getDate() + 1);
+                totalMinutes += (d2 - d1) / 60000;
+                shifts += `${tConvert(ins[i].value)}-${tConvert(outs[i].value)}<br>`;
+            }
+        }
+
+        if(totalMinutes === 0) { alert("সময় দিন!"); return; }
+
+        let hours = (totalMinutes/60).toFixed(2);
+        let pay = Math.round((wage/11) * hours);
+
+        let newRecord = { id: Date.now(), date: date, name: name, hours: hours, pay: pay, shifts: shifts };
+        
+        let data = JSON.parse(localStorage.getItem('factoryDB_v2')) || [];
+        data.push(newRecord);
+        localStorage.setItem('factoryDB_v2', JSON.stringify(data));
+        
+        alert("✅ সেভ হয়েছে!");
+        document.querySelectorAll('input[type="time"]').forEach(el => el.value = "");
+    }
+
+    // ২. রিপোর্ট দেখানো (বার সহ)
+    function loadData() {
+        let name = document.getElementById('searchName').value;
+        let month = document.getElementById('searchMonth').value; 
+        let data = JSON.parse(localStorage.getItem('factoryDB_v2')) || [];
+        
+        let filtered = data.filter(item => item.name === name && item.date.startsWith(month));
+        
+        // তারিখ অনুযায়ী সাজানো
+        filtered.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+        let tableBody = document.getElementById('tableBody');
+        tableBody.innerHTML = "";
+        let sumPay = 0;
+
+        // বারের নাম তালিকা
+        const days = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি'];
+
+        filtered.forEach(item => {
+            sumPay += item.pay;
+
+            let d = new Date(item.date);
+            let dayName = days[d.getDay()];
+            let dateOnly = item.date.split('-')[2]; 
+
+            let row = `<tr>
+                <td><b>${dateOnly} (${dayName})</b></td>
+                <td>${item.hours}</td>
+                <td>${item.pay}</td>
+                <td style="font-size:11px;">${item.shifts}</td>
+            </tr>`;
+            tableBody.innerHTML += row;
+        });
+
+        document.getElementById('rName').innerText = name;
+        document.getElementById('rMonth').innerText = month;
+        document.getElementById('totalDays').innerText = filtered.length;
+        document.getElementById('totalPay').innerText = sumPay;
+
+        document.getElementById('printableArea').style.display = 'block';
+        document.getElementById('actionButtons').style.display = 'flex';
+        
+        if(filtered.length === 0) {
+            tableBody.innerHTML = "<tr><td colspan='4'>এই মাসে কোনো ডাটা নেই</td></tr>";
+        }
+    }
+
+    // ৪. WhatsApp এ পাঠানো
+    function shareWA() {
+        let name = document.getElementById('rName').innerText;
+        let month = document.getElementById('rMonth').innerText;
+        let pay = document.getElementById('totalPay').innerText;
+        let days = document.getElementById('totalDays').innerText;
+        
+        let text = `*বেতনের হিসাব*\n👤 নাম: ${name}\n📅 মাস: ${month}\n------------------\n📊 মোট ডিউটি: ${days} দিন\n💰 মোট পাওনা: ${pay} টাকা\n------------------\nমালিকের ডিজিটাল খাতা থেকে পাঠানো।`;
+        
+        window.open("https://wa.me/?text=" + encodeURIComponent(text), '_blank');
+    }
+
+    function deleteMonthData() {
+        if(confirm("সতর্কতা: এই মাসের ডাটা ডিলিট করতে চান?")) {
+             let name = document.getElementById('searchName').value;
+             let month = document.getElementById('searchMonth').value;
+             let data = JSON.parse(localStorage.getItem('factoryDB_v2')) || [];
+             
+             let newData = data.filter(item => !(item.name === name && item.date.startsWith(month)));
+             localStorage.setItem('factoryDB_v2', JSON.stringify(newData));
+             alert("ডাটা ডিলিট হয়েছে!");
+             loadData();
+        }
+    }
+
+    function tConvert (time) {
+        time = time.toString ().match (/^([01]\d|2[0-3])(:)([0-5]\d)(:[0-5]\d)?$/) || [time];
+        if (time.length > 1) { 
+            time = time.slice (1);  
+            time[5] = +time[0] < 12 ? 'a' : 'p'; 
+            time[0] = +time[0] % 12 || 12; 
+        }
+        return time.join (''); 
+    }
+</script>
+
+</body>
+</html>
